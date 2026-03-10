@@ -141,7 +141,7 @@ def main() -> None:
 
     with st.sidebar:
         st.subheader("Session")
-        st.write(f"OpenAI configured: `{'yes' if settings.openai_api_key else 'no'}`")
+        st.write(f"LLM configured: `{'yes' if settings.openai_api_key else 'no'}`")
         st.write(f"Graph retrieval: `{'connected' if health['ok'] else 'degraded'}`")
         if not health["ok"]:
             st.warning(str(health["message"]))

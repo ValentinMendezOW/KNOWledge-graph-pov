@@ -71,8 +71,9 @@ class OpenAIService:
     def _create_text_response(
         self,
         *,
-        messages: List[dict],
-        max_output_tokens: int = 900,
+        instructions: str,
+        input_text: str,
+        max_output_tokens: int = 1200,
     ) -> str:
         if not self.client:
             raise RuntimeError("OPENAI_API_KEY is not configured.")
@@ -80,13 +81,18 @@ class OpenAIService:
         if self.settings.openai_chat_model.startswith("gpt-5"):
             response = self.client.responses.create(
                 model=self.settings.openai_chat_model,
-                input=messages,
+                instructions=instructions,
+                input=input_text,
                 max_output_tokens=max_output_tokens,
+                reasoning={"effort": "minimal"},
             )
             return response.output_text or ""
 
         response = self._create_chat_completion(
-            messages=messages,
+            messages=[
+                {"role": "system", "content": instructions},
+                {"role": "user", "content": input_text},
+            ],
             temperature=0.1,
             max_output_tokens=max_output_tokens,
         )
@@ -119,28 +125,24 @@ class OpenAIService:
             )
 
         answer = self._create_text_response(
-            max_output_tokens=900,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Answer using only the provided sources. "
-                        "Cite every substantive claim with bracketed references like [1]. "
-                        "If the sources are insufficient, say so clearly. "
-                        "Before answering, inspect the Organization field in each source block. "
-                        "Do not say an organization is missing if one or more sources list that organization. "
-                        "Keep the answer concise and decision-useful."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Question: {question}\n\n"
-                        f"Organizations present in the provided sources: {', '.join(organizations)}\n\n"
-                        f"Sources:\n\n{chr(10).join(context_blocks)}"
-                    ),
-                },
-            ],
+            instructions=(
+                "Answer using only the provided sources. "
+                "Cite every substantive claim with bracketed references like [1]. "
+                "If the sources are insufficient, say so clearly. "
+                "Before answering, inspect the Organization field in each source block. "
+                "Do not say an organization is missing if one or more sources list that organization. "
+                "Write exactly two sections: 'Short answer' and 'Key points (with sources)'. "
+                "Keep the answer concise, decision-useful, and under 220 words. "
+                "Use 3 to 5 bullets in the second section. "
+                "End cleanly after the final cited bullet. "
+                "Do not ask follow-up questions."
+            ),
+            input_text=(
+                f"Question: {question}\n\n"
+                f"Organizations present in the provided sources: {', '.join(organizations)}\n\n"
+                f"Sources:\n\n{chr(10).join(context_blocks)}"
+            ),
+            max_output_tokens=1200,
         )
         if not answer.strip():
             raise RuntimeError("Model returned an empty synthesized answer.")
