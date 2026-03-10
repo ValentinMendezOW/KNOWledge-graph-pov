@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterable, List
 
 from openai import OpenAI
@@ -73,20 +74,29 @@ class OpenAIService:
         *,
         instructions: str,
         input_text: str,
-        max_output_tokens: int = 1200,
+        max_output_tokens: int = 900,
     ) -> str:
         if not self.client:
             raise RuntimeError("OPENAI_API_KEY is not configured.")
 
         if self.settings.openai_chat_model.startswith("gpt-5"):
-            response = self.client.responses.create(
-                model=self.settings.openai_chat_model,
-                instructions=instructions,
-                input=input_text,
-                max_output_tokens=max_output_tokens,
-                reasoning={"effort": "minimal"},
-            )
-            return response.output_text or ""
+            last_error = None
+            for effort in ["low", "minimal"]:
+                try:
+                    response = self.client.responses.create(
+                        model=self.settings.openai_chat_model,
+                        instructions=instructions,
+                        input=input_text,
+                        max_output_tokens=max_output_tokens,
+                        reasoning={"effort": effort},
+                    )
+                    if response.output_text and response.output_text.strip():
+                        return response.output_text
+                except Exception as error:
+                    last_error = error
+            if last_error:
+                raise last_error
+            return ""
 
         response = self._create_chat_completion(
             messages=[
@@ -97,6 +107,23 @@ class OpenAIService:
             max_output_tokens=max_output_tokens,
         )
         return response.choices[0].message.content or ""
+
+    @staticmethod
+    def _clean_synthesized_answer(answer: str) -> str:
+        cleaned = answer.strip()
+        if not cleaned:
+            return cleaned
+
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        cleaned = re.sub(r"\nIf you want.*$", "", cleaned, flags=re.IGNORECASE | re.DOTALL).strip()
+
+        if cleaned and cleaned[-1] not in ".!?]":
+            sentence_endings = [cleaned.rfind(token) for token in [".", "!", "?", "]"]]
+            last_complete = max(sentence_endings)
+            if last_complete > 40:
+                cleaned = cleaned[: last_complete + 1].rstrip()
+
+        return cleaned
 
     @staticmethod
     def _truncate_for_embedding(text: str, max_chars: int = 6000) -> str:
@@ -131,9 +158,12 @@ class OpenAIService:
                 "If the sources are insufficient, say so clearly. "
                 "Before answering, inspect the Organization field in each source block. "
                 "Do not say an organization is missing if one or more sources list that organization. "
-                "Write exactly two sections: 'Short answer' and 'Key points (with sources)'. "
-                "Keep the answer concise, decision-useful, and under 220 words. "
-                "Use 3 to 5 bullets in the second section. "
+                "Write in the style of a short consultant brief, not generic AI prose. "
+                "Write exactly two sections: 'Bottom line' and 'Supporting points'. "
+                "The first section must be no more than two sentences. "
+                "The second section must contain exactly three bullets. "
+                "Each bullet must start with a short bold label, then one crisp sentence, then citations. "
+                "Keep the answer concise, decision-useful, and under 170 words. "
                 "End cleanly after the final cited bullet. "
                 "Do not ask follow-up questions."
             ),
@@ -142,8 +172,9 @@ class OpenAIService:
                 f"Organizations present in the provided sources: {', '.join(organizations)}\n\n"
                 f"Sources:\n\n{chr(10).join(context_blocks)}"
             ),
-            max_output_tokens=1200,
+            max_output_tokens=900,
         )
+        answer = self._clean_synthesized_answer(answer)
         if not answer.strip():
             raise RuntimeError("Model returned an empty synthesized answer.")
         return answer
