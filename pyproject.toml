@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge-graph-tool"
+version = "0.1.0"
+description = "Local-first knowledge graph pilot for citation-aware document search."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "beautifulsoup4>=4.12.3",
+  "neo4j>=5.28.1",
+  "openai>=1.97.0",
+  "pypdf>=5.7.0",
+  "python-dotenv>=1.0.1",
+  "PyYAML>=6.0.2",
+  "streamlit>=1.48.0",
+  "typer>=0.16.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.2",
+  "ruff>=0.12.10",
+]
+
+[project.scripts]
+kg-tool = "knowledge_graph_tool.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

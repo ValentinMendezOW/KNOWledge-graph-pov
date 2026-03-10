@@ -1,0 +1,2 @@
+[console_scripts]
+kg-tool = knowledge_graph_tool.cli:app

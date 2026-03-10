@@ -1,0 +1,75 @@
+Metadata-Version: 2.4
+Name: knowledge-graph-tool
+Version: 0.1.0
+Summary: Local-first knowledge graph pilot for citation-aware document search.
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: beautifulsoup4>=4.12.3
+Requires-Dist: neo4j>=5.28.1
+Requires-Dist: openai>=1.97.0
+Requires-Dist: pypdf>=5.7.0
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: PyYAML>=6.0.2
+Requires-Dist: streamlit>=1.48.0
+Requires-Dist: typer>=0.16.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3.2; extra == "dev"
+Requires-Dist: ruff>=0.12.10; extra == "dev"
+
+# Knowledge Graph Tool
+
+Local-first pilot for consultant-facing document search with:
+
+- citation-aware answers
+- simulated full-access and limited-access modes
+- pluggable ingestion adapters for `md`, `html`, and `pdf`
+- optional OpenAI-backed synthesis and embeddings
+- optional Neo4j loading for graph exploration and vector search
+
+## Current scope
+
+The current workspace does not contain PPTX files yet. The pilot uses the public corpus under `papers/` and keeps ingestion modular so a later `pptx` adapter can be added without changing the rest of the stack.
+
+## Quick start
+
+1. Create an environment and install dependencies.
+2. Copy `.env.example` to `.env` and fill in any values you have.
+3. Build the local index.
+4. Run the demo.
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+cp .env.example .env
+kg-tool build-index
+streamlit run src/knowledge_graph_tool/demo.py
+```
+
+## Optional local Neo4j
+
+```bash
+docker compose up -d
+kg-tool load-neo4j
+```
+
+The default local credentials are:
+
+- URI: `bolt://localhost:7687`
+- Username: `neo4j`
+- Password: `local-password`
+
+## Commands
+
+```bash
+kg-tool build-index
+kg-tool ask "What are the major GenAI trends in financial services?"
+kg-tool load-neo4j
+```
+
+## What is still needed from you
+
+- `OPENAI_API_KEY` when you want LLM-backed synthesis and embeddings
+- Neo4j credentials if you want me to target a non-local instance
+- the real PPTX corpus when you want the original PoC ingestion path
+- the final restricted-document policy when you want the access model to reflect production rules
