@@ -346,7 +346,12 @@ def _candidate_scores(
     session,
     candidate_k: int,
 ) -> Dict[str, float]:
-    vector_scores = _vector_candidates(session, question_embedding, candidate_k) if question_embedding else {}
+    vector_scores: Dict[str, float] = {}
+    if question_embedding:
+        try:
+            vector_scores = _vector_candidates(session, question_embedding, candidate_k)
+        except Exception:
+            vector_scores = {}
     keyword_scores = _keyword_candidates(session, question, candidate_k)
     normalized_vector = _normalize_scores(vector_scores)
     normalized_keyword = _normalize_scores(keyword_scores)

@@ -142,8 +142,7 @@ def main() -> None:
     with st.sidebar:
         st.subheader("Session")
         st.write(f"OpenAI configured: `{'yes' if settings.openai_api_key else 'no'}`")
-        st.write(f"Neo4j target: `{settings.neo4j_uri}`")
-        st.write(f"Graph status: `{'connected' if health['ok'] else 'degraded'}`")
+        st.write(f"Graph retrieval: `{'connected' if health['ok'] else 'degraded'}`")
         if not health["ok"]:
             st.warning(str(health["message"]))
         use_llm = st.checkbox("AI synthesis", value=True, help="Neo4j retrieval plus LLM synthesis.")

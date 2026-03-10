@@ -32,6 +32,66 @@ class OpenAIService:
         )
         return [item.embedding for item in response.data]
 
+    def _create_chat_completion(
+        self,
+        *,
+        messages: List[dict],
+        temperature: float | None = None,
+        max_output_tokens: int = 500,
+        response_format: dict | None = None,
+    ):
+        if not self.client:
+            raise RuntimeError("OPENAI_API_KEY is not configured.")
+
+        parameters = {
+            "model": self.settings.openai_chat_model,
+            "messages": messages,
+            "max_tokens": max_output_tokens,
+        }
+        if temperature is not None:
+            parameters["temperature"] = temperature
+        if response_format is not None:
+            parameters["response_format"] = response_format
+
+        for _ in range(3):
+            try:
+                return self.client.chat.completions.create(**parameters)
+            except Exception as error:
+                message = str(error)
+                updated = False
+                if "max_tokens" in message and "unsupported" in message and "max_tokens" in parameters:
+                    parameters["max_completion_tokens"] = parameters.pop("max_tokens")
+                    updated = True
+                if "temperature" in message and "unsupported" in message and "temperature" in parameters:
+                    parameters.pop("temperature", None)
+                    updated = True
+                if not updated:
+                    raise
+
+    def _create_text_response(
+        self,
+        *,
+        messages: List[dict],
+        max_output_tokens: int = 900,
+    ) -> str:
+        if not self.client:
+            raise RuntimeError("OPENAI_API_KEY is not configured.")
+
+        if self.settings.openai_chat_model.startswith("gpt-5"):
+            response = self.client.responses.create(
+                model=self.settings.openai_chat_model,
+                input=messages,
+                max_output_tokens=max_output_tokens,
+            )
+            return response.output_text or ""
+
+        response = self._create_chat_completion(
+            messages=messages,
+            temperature=0.1,
+            max_output_tokens=max_output_tokens,
+        )
+        return response.choices[0].message.content or ""
+
     @staticmethod
     def _truncate_for_embedding(text: str, max_chars: int = 6000) -> str:
         if len(text) <= max_chars:
@@ -58,10 +118,8 @@ class OpenAIService:
                 )
             )
 
-        response = self.client.chat.completions.create(
-            model=self.settings.openai_chat_model,
-            temperature=0.1,
-            max_tokens=500,
+        answer = self._create_text_response(
+            max_output_tokens=900,
             messages=[
                 {
                     "role": "system",
@@ -84,7 +142,9 @@ class OpenAIService:
                 },
             ],
         )
-        return response.choices[0].message.content or ""
+        if not answer.strip():
+            raise RuntimeError("Model returned an empty synthesized answer.")
+        return answer
 
     def infer_pdf_metadata(
         self,
@@ -98,8 +158,7 @@ class OpenAIService:
             raise RuntimeError("OPENAI_API_KEY is not configured.")
 
         organization_list = ", ".join(sorted(ORGANIZATION_ALIASES))
-        response = self.client.chat.completions.create(
-            model=self.settings.openai_chat_model,
+        response = self._create_chat_completion(
             temperature=0,
             response_format={"type": "json_object"},
             messages=[

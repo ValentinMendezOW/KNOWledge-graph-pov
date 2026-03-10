@@ -133,6 +133,29 @@ def scoped_filters(filters: Optional[SearchFilters], organizations: List[str]) -
     )
 
 
+def constrain_filters(
+    filters: Optional[SearchFilters],
+    mentioned_organizations: List[str],
+) -> SearchFilters:
+    base_organizations = list(filters.organizations) if filters else []
+    effective_organizations = base_organizations
+
+    if mentioned_organizations:
+        if base_organizations:
+            overlap = [organization for organization in mentioned_organizations if organization in base_organizations]
+            effective_organizations = overlap or mentioned_organizations
+        else:
+            effective_organizations = mentioned_organizations
+
+    return SearchFilters(
+        organizations=effective_organizations,
+        practices=list(filters.practices) if filters else [],
+        industries=list(filters.industries) if filters else [],
+        topics=list(filters.topics) if filters else [],
+        years=list(filters.years) if filters else [],
+    )
+
+
 def boost_hits_for_query(
     hits: List[SearchHit],
     mentioned_organizations: List[str],
@@ -391,6 +414,7 @@ def answer_question(
 
     profile_documents = documents or (index.documents if index else [])
     mentioned_organizations, comparison_query = query_profile(question, profile_documents)
+    effective_filters = constrain_filters(filters, mentioned_organizations)
     hits: List[SearchHit] = []
     graph_error: Optional[Exception] = None
 
@@ -404,7 +428,7 @@ def answer_question(
             principal=principal,
             question_embedding=question_embedding,
             top_k=settings.top_k,
-            filters=filters,
+            filters=effective_filters,
         )
         if comparison_query and mentioned_organizations:
             covered_organizations = {hit.document.organization for hit in hits}
@@ -417,7 +441,7 @@ def answer_question(
                     principal=principal,
                     question_embedding=question_embedding,
                     top_k=max(2, settings.top_k // 2),
-                    filters=scoped_filters(filters, [organization]),
+                    filters=scoped_filters(effective_filters, [organization]),
                 )
                 if organization_hits:
                     hits.extend(organization_hits)
@@ -450,7 +474,12 @@ def answer_question(
             )
         start = time.perf_counter()
         engine = LocalSearchEngine(index, settings)
-        hits = engine.search(question, principal, question_embedding=question_embedding, filters=filters)
+        hits = engine.search(
+            question,
+            principal,
+            question_embedding=question_embedding,
+            filters=effective_filters,
+        )
         timings["retrieval_seconds"] = round(time.perf_counter() - start, 3)
 
     if not hits:
