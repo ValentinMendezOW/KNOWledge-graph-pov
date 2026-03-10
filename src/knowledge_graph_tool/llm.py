@@ -52,7 +52,7 @@ class OpenAIService:
                         f"[{index}] Organization: {hit.document.organization}",
                         f"[{index}] Date: {hit.document.published_date or 'Unknown'}",
                         f"[{index}] Section: {(hit.parent_chunk.heading if hit.parent_chunk else hit.chunk.heading)}",
-                        f"[{index}] Path: {hit.document.path}",
+                        f"[{index}] Source file: {hit.document.file_name}",
                         f"[{index}] Excerpt: {hit.excerpt}",
                     ]
                 )

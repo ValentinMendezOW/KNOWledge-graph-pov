@@ -1,33 +1,75 @@
-# Knowledge Graph Pilot
+# Consulting Research Explorer
 
-Consultant-facing document search over a public consulting-paper corpus with:
+Consulting Research Explorer is a citation-first question answering app for public consulting-firm research.
 
-- Neo4j Aura as the primary retrieval layer
-- hybrid vector + full-text graph retrieval
-- parent-child chunking for better answer grounding
-- OpenAI-based synthesis with citations
-- a Streamlit interface suitable for a small internal reviewer pilot
+It is built for a small internal reviewer group that wants to:
 
-## Deployment stance
+- ask questions across a multi-firm document set
+- compare how firms frame the same topic
+- inspect the exact passages used to support each answer
+- keep Neo4j as the retrieval layer instead of hiding everything inside a flat vector store
 
-This repository is hardened for `Streamlit Community Cloud` style deployment:
+The current corpus is the local `papers/` directory used during ingestion, while the deployed app runs graph-first against Neo4j Aura.
 
-- secrets can come from `Streamlit secrets` or environment variables
-- the app prefers `Neo4j Aura` for catalog, filters, metrics, and retrieval
-- local index loading is fallback-only rather than the default app boot path
-- admin ingestion controls are disabled by default
+## What the app does
 
-The intended Cloud entrypoint is `app.py`.
+- Ingests Markdown and PDF research documents
+- Extracts and cleans document metadata, including PDF metadata with OpenAI-assisted cleanup
+- Builds a parent-child chunk structure for better grounded retrieval
+- Loads documents, sections, chunks, and relationships into Neo4j Aura
+- Uses hybrid graph retrieval:
+  - vector search over child chunks
+  - full-text search over chunk content
+  - section-level context recovery before synthesis
+- Generates a concise answer with citations to the supporting sources
 
-## Local setup
+## Product behavior
 
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
-cp .env.example .env
-PYTHONPATH=src .venv/bin/streamlit run app.py
-```
+The Streamlit app is designed to answer questions like:
+
+- What themes are showing up in AI transformation for financial services?
+- How does Oliver Wyman frame AI compared with McKinsey?
+- Which firms emphasize operating model change versus technology modernization?
+
+The UI exposes:
+
+- answer generation with citations
+- source expanders with supporting excerpts
+- organization, industry, topic, and year filters
+- optional restricted-access simulation for future access-control work
+
+## Architecture
+
+Core runtime flow:
+
+1. User asks a question in Streamlit.
+2. The app embeds the query with OpenAI.
+3. Neo4j Aura retrieves relevant child chunks using hybrid search.
+4. The retriever rolls those results up to parent sections for better context.
+5. The app synthesizes a cited answer using the retrieved evidence only.
+
+Main components:
+
+- `app.py`: Streamlit Cloud entrypoint
+- `src/knowledge_graph_tool/demo.py`: Streamlit UI
+- `src/knowledge_graph_tool/ingest.py`: ingestion and index build
+- `src/knowledge_graph_tool/graph.py`: Neo4j load, health, metrics, retrieval support
+- `src/knowledge_graph_tool/search.py`: graph-backed retrieval and answer assembly
+- `src/knowledge_graph_tool/llm.py`: embeddings, answer synthesis, PDF metadata cleanup
+
+## Deployment model
+
+This repository is hardened for Streamlit Community Cloud for a small reviewer pilot.
+
+Design choices:
+
+- secrets can be provided through Streamlit secrets or environment variables
+- the deployed app is graph-first and prefers Neo4j Aura
+- local index loading is fallback-only
+- admin rebuild tools are disabled by default
+- timing and connection health are surfaced in the UI for debugging reviewer issues
+
+This is suitable for a small internal evaluation group. It is not the final production hosting model.
 
 ## Required secrets
 
@@ -51,22 +93,19 @@ KG_TOP_K = "6"
 
 See `.streamlit/secrets.toml.example`.
 
-## Runtime behavior
-
-- If `Neo4j` is reachable, the app uses graph-backed retrieval.
-- If `KG_REQUIRE_GRAPH=true`, the app stops instead of silently degrading when Neo4j is unavailable.
-- If `KG_REQUIRE_GRAPH=false`, the app can fall back to a local index when one exists.
-- The sidebar shows connection health and timing for embedding, retrieval, and synthesis.
-
-## Admin and ingestion
-
-For pilot reviewers, the deployed app should not rebuild the corpus or reload Neo4j. Those controls are hidden unless:
+## Local development
 
 ```bash
-KG_ENABLE_ADMIN_TOOLS=true
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+cp .env.example .env
+PYTHONPATH=src .venv/bin/streamlit run app.py
 ```
 
-Local maintenance commands remain available:
+## Loading or rebuilding data
+
+Local maintenance commands:
 
 ```bash
 ./scripts/kg_tool.sh build-index --rebuild
@@ -74,9 +113,33 @@ Local maintenance commands remain available:
 ./scripts/kg_tool.sh ask "What is Oliver Wyman's take on AI compared with McKinsey?"
 ```
 
-## Streamlit Community Cloud notes
+For reviewer deployments, keep `KG_ENABLE_ADMIN_TOOLS=false` so those controls stay hidden in the UI.
 
-- Use `requirements.txt` as the dependency source.
-- Set the app file to `app.py`.
-- Put credentials in Streamlit secrets, not in `.env`.
-- Expect cold starts and sleeping on the free tier; this repo is tuned for a small reviewer pilot, not broad production usage.
+## Streamlit Community Cloud setup
+
+1. Create a new app from this repository.
+2. Select branch `main`.
+3. Set the app file to `app.py`.
+4. Paste the required secrets into Streamlit Cloud.
+5. Deploy.
+
+Recommended reviewer settings:
+
+- `KG_REQUIRE_GRAPH = "true"`
+- `KG_ENABLE_ADMIN_TOOLS = "false"`
+
+## Current limitations
+
+- The pilot corpus is still public-paper based rather than real client decks.
+- PDF extraction quality is improved, but some titles and publication dates can still be noisy.
+- Streamlit Community Cloud is acceptable for a reviewer pilot, not for broad consultant rollout.
+- Access control is still simulated; real identity and authorization are a future integration.
+
+## Status
+
+The repository currently supports:
+
+- Neo4j Aura-backed retrieval
+- OpenAI synthesis with citations
+- Streamlit deployment for internal reviewers
+- parent-child chunking aligned with modern GraphRAG retrieval patterns

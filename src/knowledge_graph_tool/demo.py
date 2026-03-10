@@ -17,7 +17,7 @@ from knowledge_graph_tool.models import AccessPrincipal, CorpusIndex, DocumentRe
 from knowledge_graph_tool.search import answer_question
 
 
-st.set_page_config(page_title="Knowledge Graph Pilot", layout="wide")
+st.set_page_config(page_title="Consulting Research Explorer", layout="wide")
 
 
 @st.cache_resource
@@ -128,8 +128,10 @@ def main() -> None:
     fallback_index = cached_index(False) if not graph_available(settings) else None
     index_generated_at = fallback_index.generated_at if fallback_index else ""
 
-    st.title("Knowledge Graph Pilot")
-    st.caption("Neo4j-backed parent-child retrieval with AI synthesis and source citations.")
+    st.title("Consulting Research Explorer")
+    st.caption(
+        "Ask across consulting-firm research, compare viewpoints, and inspect the cited passages behind each answer."
+    )
 
     metric_columns = st.columns(4)
     metric_columns[0].metric("Documents", metrics["documents"])
@@ -138,8 +140,7 @@ def main() -> None:
     metric_columns[3].metric("Restricted docs", metrics["restricted_documents"])
 
     with st.sidebar:
-        st.subheader("System")
-        st.write(f"Corpus: `{settings.corpus_dir}`")
+        st.subheader("Session")
         st.write(f"OpenAI configured: `{'yes' if settings.openai_api_key else 'no'}`")
         st.write(f"Neo4j target: `{settings.neo4j_uri}`")
         st.write(f"Graph status: `{'connected' if health['ok'] else 'degraded'}`")
@@ -172,7 +173,7 @@ def main() -> None:
                     except Exception as error:  # pragma: no cover
                         st.error(str(error))
 
-        st.subheader("Access simulation")
+        st.subheader("Access scope")
         allowed_document_ids = []
         if restricted_documents:
             access_mode = st.radio(
@@ -190,7 +191,7 @@ def main() -> None:
             access_mode = "all_access"
             st.caption("No restricted documents are configured in this pilot.")
 
-        st.subheader("Filters")
+        st.subheader("Narrow the corpus")
         selected_organizations = st.multiselect("Organization", organizations)
         selected_industries = st.multiselect("Industry", industries)
         selected_topics = st.multiselect("Topic", topics)
@@ -200,15 +201,18 @@ def main() -> None:
         st.error("Neo4j is required for this deployment and is not currently reachable.")
         st.stop()
 
-    st.subheader("Ask a question")
+    st.subheader("Ask across the research")
     question = st.text_area(
         "Question",
         value="What themes are showing up in AI transformation for financial services?",
         height=100,
     )
+    st.caption(
+        "Try: Compare Oliver Wyman and McKinsey on AI in financial services. Or: What operating-model themes show up in transformation work?"
+    )
 
-    if st.button("Search", type="primary"):
-        with st.spinner("Searching sources..."):
+    if st.button("Generate answer", type="primary"):
+        with st.spinner("Retrieving cited passages and composing the answer..."):
             bundle = cached_search(
                 question=question,
                 access_mode=access_mode,
@@ -257,7 +261,7 @@ def main() -> None:
                 if hit.document.topics:
                     st.write(f"Topic: {', '.join(hit.document.topics)}")
                 st.write(hit.excerpt)
-                st.code(hit.document.path, language="text")
+                st.caption(f"Source file: {hit.document.file_name}")
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 # Lovable Prompt
 
-Build a React frontend for an internal consultant-facing knowledge search tool called `Knowledge Graph Pilot`.
+Build a React frontend for an internal consultant-facing knowledge search tool called `Consulting Research Explorer`.
 
 Product goal:
 - Let consultants search an internal corpus of documents with citation-grounded answers.
@@ -17,7 +17,7 @@ Current backend reality:
   - `title`
   - `organization`
   - `published_date`
-  - `path`
+  - `file_name`
   - `access_tier`
   - `practices`
   - `industries`
@@ -93,7 +93,7 @@ Mock backend contracts:
   - response:
     - `answer: string`
     - `used_llm: boolean`
-    - `hits: Array<{ score: number, document: { doc_id: string, title: string, organization: string, published_date: string | null, path: string, access_tier: string, practices: string[], industries: string[], topics: string[] }, chunk: { chunk_id: string, chunk_index: number }, excerpt: string }>`
+    - `hits: Array<{ score: number, document: { doc_id: string, title: string, organization: string, published_date: string | null, file_name: string, access_tier: string, practices: string[], industries: string[], topics: string[] }, chunk: { chunk_id: string, chunk_index: number }, excerpt: string }>`
 
 - `GET /api/status`
   - response:
