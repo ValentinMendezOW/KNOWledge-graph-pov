@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from typing import Optional
+from urllib.parse import quote
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from knowledge_graph_tool.config import load_settings
 from knowledge_graph_tool.graph import (
@@ -18,6 +20,29 @@ from knowledge_graph_tool.search import answer_question
 
 
 st.set_page_config(page_title="Consulting Research Explorer", page_icon="📖", layout="wide")
+
+
+def inject_tab_icon() -> None:
+    svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='50' font-size='52'>📖</text></svg>"
+    icon_url = f"data:image/svg+xml,{quote(svg)}"
+    components.html(
+        f"""
+        <script>
+        const iconUrl = "{icon_url}";
+        const doc = window.parent.document;
+        let link = doc.querySelector("link[rel='shortcut icon']");
+        if (!link) {{
+          link = doc.createElement("link");
+          link.rel = "shortcut icon";
+          doc.head.appendChild(link);
+        }}
+        link.type = "image/svg+xml";
+        link.href = iconUrl;
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 
 @st.cache_resource
@@ -111,6 +136,7 @@ def active_metrics(settings, documents: list[DocumentRecord]) -> dict:
 
 
 def main() -> None:
+    inject_tab_icon()
     settings = app_settings()
     manifest = load_restricted_manifest(settings.restricted_manifest_path)
     documents = active_documents(settings)
