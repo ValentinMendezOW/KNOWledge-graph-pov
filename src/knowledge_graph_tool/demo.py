@@ -17,7 +17,7 @@ from knowledge_graph_tool.models import AccessPrincipal, CorpusIndex, DocumentRe
 from knowledge_graph_tool.search import answer_question
 
 
-st.set_page_config(page_title="Consulting Research Explorer", layout="wide")
+st.set_page_config(page_title="Consulting Research Explorer", page_icon="📖", layout="wide")
 
 
 @st.cache_resource
