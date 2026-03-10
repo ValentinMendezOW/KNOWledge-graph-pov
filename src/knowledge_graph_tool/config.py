@@ -70,8 +70,8 @@ def load_settings() -> Settings:
         local_index_path=local_index_path,
         restricted_manifest_path=restricted_manifest_path,
         openai_api_key=str(_setting("OPENAI_API_KEY", "")),
-        openai_chat_model=str(_setting("OPENAI_CHAT_MODEL", "gpt-4.1-mini")),
-        openai_embedding_model=str(_setting("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")),
+        openai_chat_model=str(_setting("OPENAI_CHAT_MODEL", "gpt-5-mini")),
+        openai_embedding_model=str(_setting("OPENAI_EMBEDDING_MODEL", "text-embedding-3-large")),
         neo4j_uri=str(_setting("NEO4J_URI", "bolt://localhost:7687")),
         neo4j_username=str(_setting("NEO4J_USERNAME", "neo4j")),
         neo4j_password=str(_setting("NEO4J_PASSWORD", "")),
@@ -82,5 +82,5 @@ def load_settings() -> Settings:
         child_chunk_overlap=int(_setting("KG_CHILD_CHUNK_OVERLAP", "140")),
         require_graph=_bool_setting("KG_REQUIRE_GRAPH", True),
         enable_admin_tools=_bool_setting("KG_ENABLE_ADMIN_TOOLS", False),
-        openai_timeout_seconds=int(_setting("OPENAI_TIMEOUT_SECONDS", "30")),
+        openai_timeout_seconds=int(_setting("OPENAI_TIMEOUT_SECONDS", "60")),
     )
