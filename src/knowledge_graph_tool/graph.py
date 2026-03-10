@@ -149,6 +149,15 @@ def ensure_schema(settings: Settings, embedding_dimensions: int = 1536) -> None:
                 session.run(statement)
 
 
+def reset_search_indexes(settings: Settings, embedding_dimensions: int = 1536) -> None:
+    with _driver(settings) as driver:
+        with driver.session(database=settings.neo4j_database) as session:
+            session.run(f"DROP INDEX {VECTOR_INDEX_NAME} IF EXISTS")
+            session.run(f"DROP INDEX {FULLTEXT_INDEX_NAME} IF EXISTS")
+
+    ensure_schema(settings, embedding_dimensions=embedding_dimensions)
+
+
 def _batched(rows: List[dict], size: int = 200):
     for start in range(0, len(rows), size):
         yield rows[start : start + size]
@@ -166,7 +175,7 @@ def load_index_to_neo4j(index: CorpusIndex, settings: Settings) -> None:
             embedding_dimensions = len(chunk.embedding)
             break
 
-    ensure_schema(settings, embedding_dimensions=embedding_dimensions)
+    reset_search_indexes(settings, embedding_dimensions=embedding_dimensions)
 
     with _driver(settings) as driver:
         with driver.session(database=settings.neo4j_database) as session:
