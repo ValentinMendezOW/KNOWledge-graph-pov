@@ -116,6 +116,9 @@ class OpenAIService:
 
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         cleaned = re.sub(r"\nIf you want.*$", "", cleaned, flags=re.IGNORECASE | re.DOTALL).strip()
+        cleaned = re.sub(r"^\s*Bottom line\s*:?\s*", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"^\s*Key points\s*:?\s*", "Key points:\n", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\n\s*Supporting points\s*:?\s*", "\nKey points:\n", cleaned, flags=re.IGNORECASE)
 
         if cleaned and cleaned[-1] not in ".!?]":
             sentence_endings = [cleaned.rfind(token) for token in [".", "!", "?", "]"]]
@@ -133,7 +136,7 @@ class OpenAIService:
             if len(token) > 2
         }
 
-    def _focused_excerpt(self, question: str, source_text: str, char_budget: int = 420) -> str:
+    def _focused_excerpt(self, question: str, source_text: str, char_budget: int = 520) -> str:
         question_tokens = self._question_tokens(question)
         sentences = [
             sentence.strip()
@@ -180,7 +183,7 @@ class OpenAIService:
         if not self.client:
             raise RuntimeError("OPENAI_API_KEY is not configured.")
 
-        synthesis_hits = hits[:4]
+        synthesis_hits = hits[:5]
         organizations = sorted({hit.document.organization for hit in synthesis_hits})
         context_blocks = []
         for index, hit in enumerate(synthesis_hits, start=1):
@@ -204,11 +207,13 @@ class OpenAIService:
                 "Before answering, inspect the Organization field in each source block. "
                 "Do not say an organization is missing if one or more sources list that organization. "
                 "Write in the style of a short consultant brief, not generic AI prose. "
-                "Write exactly two sections: 'Bottom line' and 'Supporting points'. "
-                "The first section must be no more than two sentences. "
-                "The second section must contain exactly three bullets. "
-                "Each bullet must start with a short bold label, then one crisp sentence, then citations. "
-                "Keep the answer concise, decision-useful, and under 170 words. "
+                "Start immediately with a direct answer paragraph and do not add a heading before it. "
+                "After that, add a section titled 'Key points:'. "
+                "The opening paragraph should be 2 to 3 sentences. "
+                "The 'Key points:' section should contain 3 to 5 bullets. "
+                "Each bullet must start with a short bold label, then one or two crisp sentences, then citations. "
+                "Be concise but a bit more explanatory than a terse executive summary. "
+                "Keep the answer decision-useful and under 260 words. "
                 "End cleanly after the final cited bullet. "
                 "Do not ask follow-up questions."
             ),
@@ -217,7 +222,7 @@ class OpenAIService:
                 f"Organizations present in the provided sources: {', '.join(organizations)}\n\n"
                 f"Sources:\n\n{chr(10).join(context_blocks)}"
             ),
-            max_output_tokens=360,
+            max_output_tokens=520,
         )
         answer = self._clean_synthesized_answer(answer)
         if not answer.strip():
