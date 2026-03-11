@@ -4,7 +4,6 @@ from typing import Optional
 from urllib.parse import quote
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from knowledge_graph_tool.config import load_settings
 from knowledge_graph_tool.graph import (
@@ -25,13 +24,13 @@ st.set_page_config(page_title="Consulting Research Explorer", page_icon="📖", 
 def inject_tab_icon() -> None:
     svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='50' font-size='52'>📖</text></svg>"
     icon_url = f"data:image/svg+xml,{quote(svg)}"
-    components.html(
+    st.html(
         f"""
+        <div style="display:none"></div>
         <script>
         (() => {{
           const iconUrl = "{icon_url}";
-          const parentWindow = window.parent;
-          const doc = parentWindow.document;
+          const doc = window.document;
 
           const applyIcon = () => {{
             const iconRels = ["icon", "shortcut icon", "apple-touch-icon"];
@@ -55,27 +54,26 @@ def inject_tab_icon() -> None:
 
           applyIcon();
 
-          if (parentWindow.__kgTabIconObserver) {{
-            parentWindow.__kgTabIconObserver.disconnect();
+          if (window.__kgTabIconObserver) {{
+            window.__kgTabIconObserver.disconnect();
           }}
-          if (parentWindow.__kgTabIconInterval) {{
-            clearInterval(parentWindow.__kgTabIconInterval);
+          if (window.__kgTabIconInterval) {{
+            clearInterval(window.__kgTabIconInterval);
           }}
 
-          parentWindow.__kgTabIconObserver = new parentWindow.MutationObserver(() => applyIcon());
-          parentWindow.__kgTabIconObserver.observe(doc.head, {{
+          window.__kgTabIconObserver = new MutationObserver(() => applyIcon());
+          window.__kgTabIconObserver.observe(doc.head, {{
             childList: true,
             subtree: true,
             attributes: true,
             attributeFilter: ["href", "rel", "type"]
           }});
 
-          parentWindow.__kgTabIconInterval = parentWindow.setInterval(applyIcon, 1500);
+          window.__kgTabIconInterval = window.setInterval(applyIcon, 1500);
         }})();
         </script>
         """,
-        height=0,
-        width=0,
+        unsafe_allow_javascript=True,
     )
 
 
