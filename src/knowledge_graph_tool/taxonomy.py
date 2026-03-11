@@ -12,8 +12,8 @@ ORGANIZATION_ALIASES: Dict[str, List[str]] = {
     "Deloitte": ["deloitte"],
     "EY": ["ey", "ernst & young"],
     "KPMG": ["kpmg"],
-    "McKinsey": ["mckinsey", "mckinsey & company", "mckinsey global institute", "quantumblack"],
-    "Oliver Wyman": ["oliver wyman", "oliverwyman"],
+    "McKinsey": ["mckinsey", "mckinsey & company", "mckinsey global institute", "quantumblack", "mck"],
+    "Oliver Wyman": ["oliver wyman", "oliverwyman", "ow"],
     "PwC": ["pwc", "pricewaterhousecoopers", "price waterhouse coopers"],
 }
 

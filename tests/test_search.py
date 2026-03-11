@@ -392,3 +392,87 @@ def test_explicit_organization_mention_scopes_results_to_that_firm():
 
     assert bundle.hits
     assert {hit.document.organization for hit in bundle.hits} == {"Oliver Wyman"}
+
+
+def test_short_firm_alias_scopes_results_to_that_firm():
+    documents = [
+        DocumentRecord(
+            doc_id="ow-1",
+            path="/tmp/ow-1.md",
+            file_name="ow-1.md",
+            file_type="md",
+            title="Oliver Wyman on AI and workforce change",
+            organization="Oliver Wyman",
+            published_date="2025-01-01",
+            access_tier="all",
+        ),
+        DocumentRecord(
+            doc_id="mc-1",
+            path="/tmp/mc-1.md",
+            file_name="mc-1.md",
+            file_type="md",
+            title="McKinsey on AI productivity",
+            organization="McKinsey",
+            published_date="2025-01-01",
+            access_tier="all",
+        ),
+    ]
+    parent_chunks = [
+        ParentChunkRecord(
+            parent_chunk_id="ow-1:p0",
+            doc_id="ow-1",
+            parent_index=0,
+            heading="Oliver Wyman on AI and workforce change",
+            text="Oliver Wyman argues AI will reshape work through role redesign and expert augmentation.",
+            token_estimate=12,
+        ),
+        ParentChunkRecord(
+            parent_chunk_id="mc-1:p0",
+            doc_id="mc-1",
+            parent_index=0,
+            heading="McKinsey on AI productivity",
+            text="McKinsey emphasizes productivity gains from generative AI across occupations.",
+            token_estimate=10,
+        ),
+    ]
+    chunks = [
+        ChunkRecord(
+            chunk_id="ow-1:p0:c0",
+            doc_id="ow-1",
+            parent_chunk_id="ow-1:p0",
+            chunk_index=0,
+            child_index=0,
+            heading="Oliver Wyman on AI and workforce change",
+            text="Oliver Wyman argues AI will reshape work through role redesign and expert augmentation.",
+            token_estimate=12,
+            embedding=[0.9, 0.1],
+        ),
+        ChunkRecord(
+            chunk_id="mc-1:p0:c0",
+            doc_id="mc-1",
+            parent_chunk_id="mc-1:p0",
+            chunk_index=0,
+            child_index=0,
+            heading="McKinsey on AI productivity",
+            text="McKinsey emphasizes productivity gains from generative AI across occupations.",
+            token_estimate=10,
+            embedding=[0.91, 0.09],
+        ),
+    ]
+    index = CorpusIndex(
+        generated_at="2026-03-08T00:00:00Z",
+        documents=documents,
+        parent_chunks=parent_chunks,
+        chunks=chunks,
+    )
+
+    bundle = answer_question(
+        question="What is OW's take on how AI will impact jobs?",
+        principal=AccessPrincipal(mode="all_access"),
+        index=index,
+        settings=make_settings(),
+        use_llm=False,
+    )
+
+    assert bundle.hits
+    assert {hit.document.organization for hit in bundle.hits} == {"Oliver Wyman"}

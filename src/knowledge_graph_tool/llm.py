@@ -205,6 +205,7 @@ class OpenAIService:
                 "Cite every substantive claim with bracketed references like [1]. "
                 "If the sources are insufficient, say so clearly. "
                 "Before answering, inspect the Organization field in each source block. "
+                "Treat common firm aliases as equivalent to canonical firm names; for example, 'OW' means 'Oliver Wyman' and 'McK' means 'McKinsey'. "
                 "Do not say an organization is missing if one or more sources list that organization. "
                 "Write in the style of a short consultant brief, not generic AI prose. "
                 "Start immediately with a direct answer paragraph and do not add a heading before it. "

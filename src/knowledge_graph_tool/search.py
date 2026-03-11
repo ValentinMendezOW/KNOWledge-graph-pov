@@ -123,6 +123,22 @@ def query_profile(question: str, documents: Iterable[DocumentRecord]) -> tuple[L
     return extract_mentioned_organizations(question, available_organizations), is_comparison_query(question)
 
 
+def enrich_question_with_organizations(question: str, mentioned_organizations: List[str]) -> str:
+    if not mentioned_organizations:
+        return question
+
+    normalized_question = f" {normalize_for_matching(question)} "
+    additions = []
+    for organization in mentioned_organizations:
+        normalized_org = f" {normalize_for_matching(organization)} "
+        if normalized_org not in normalized_question:
+            additions.append(organization)
+
+    if not additions:
+        return question
+    return f"{question} ({', '.join(additions)})"
+
+
 def scoped_filters(filters: Optional[SearchFilters], organizations: List[str]) -> SearchFilters:
     return SearchFilters(
         organizations=organizations,
@@ -403,17 +419,17 @@ def answer_question(
 ) -> AnswerBundle:
     timings: Dict[str, float] = {}
     llm = OpenAIService(settings)
+    profile_documents = documents or (index.documents if index else [])
+    mentioned_organizations, comparison_query = query_profile(question, profile_documents)
+    retrieval_question = enrich_question_with_organizations(question, mentioned_organizations)
     question_embedding = None
     if llm.enabled:
         try:
             start = time.perf_counter()
-            question_embedding = llm.embed_texts([question])[0]
+            question_embedding = llm.embed_texts([retrieval_question])[0]
             timings["embedding_seconds"] = round(time.perf_counter() - start, 3)
         except Exception:
             question_embedding = None
-
-    profile_documents = documents or (index.documents if index else [])
-    mentioned_organizations, comparison_query = query_profile(question, profile_documents)
     effective_filters = constrain_filters(filters, mentioned_organizations)
     hits: List[SearchHit] = []
     graph_error: Optional[Exception] = None
@@ -423,7 +439,7 @@ def answer_question(
 
         start = time.perf_counter()
         hits = hybrid_graph_search(
-            question=question,
+            question=retrieval_question,
             settings=settings,
             principal=principal,
             question_embedding=question_embedding,
@@ -436,7 +452,7 @@ def answer_question(
                 if organization in covered_organizations:
                     continue
                 organization_hits = hybrid_graph_search(
-                    question=question,
+                    question=retrieval_question,
                     settings=settings,
                     principal=principal,
                     question_embedding=question_embedding,
@@ -475,7 +491,7 @@ def answer_question(
         start = time.perf_counter()
         engine = LocalSearchEngine(index, settings)
         hits = engine.search(
-            question,
+            retrieval_question,
             principal,
             question_embedding=question_embedding,
             filters=effective_filters,
