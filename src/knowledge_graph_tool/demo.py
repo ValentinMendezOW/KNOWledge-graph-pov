@@ -28,16 +28,50 @@ def inject_tab_icon() -> None:
     components.html(
         f"""
         <script>
-        const iconUrl = "{icon_url}";
-        const doc = window.parent.document;
-        let link = doc.querySelector("link[rel='shortcut icon']");
-        if (!link) {{
-          link = doc.createElement("link");
-          link.rel = "shortcut icon";
-          doc.head.appendChild(link);
-        }}
-        link.type = "image/svg+xml";
-        link.href = iconUrl;
+        (() => {{
+          const iconUrl = "{icon_url}";
+          const parentWindow = window.parent;
+          const doc = parentWindow.document;
+
+          const applyIcon = () => {{
+            const iconRels = ["icon", "shortcut icon", "apple-touch-icon"];
+            for (const rel of iconRels) {{
+              let link = doc.head.querySelector(`link[rel="${{rel}}"][data-kg-icon="true"]`);
+              if (!link) {{
+                link = doc.createElement("link");
+                link.setAttribute("data-kg-icon", "true");
+                doc.head.appendChild(link);
+              }}
+              link.rel = rel;
+              link.type = "image/svg+xml";
+              link.href = iconUrl;
+            }}
+
+            for (const link of doc.head.querySelectorAll("link[rel*='icon']:not([data-kg-icon='true'])")) {{
+              link.type = "image/svg+xml";
+              link.href = iconUrl;
+            }}
+          }};
+
+          applyIcon();
+
+          if (parentWindow.__kgTabIconObserver) {{
+            parentWindow.__kgTabIconObserver.disconnect();
+          }}
+          if (parentWindow.__kgTabIconInterval) {{
+            clearInterval(parentWindow.__kgTabIconInterval);
+          }}
+
+          parentWindow.__kgTabIconObserver = new parentWindow.MutationObserver(() => applyIcon());
+          parentWindow.__kgTabIconObserver.observe(doc.head, {{
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["href", "rel", "type"]
+          }});
+
+          parentWindow.__kgTabIconInterval = parentWindow.setInterval(applyIcon, 1500);
+        }})();
         </script>
         """,
         height=0,
