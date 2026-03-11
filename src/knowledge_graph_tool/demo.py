@@ -41,35 +41,26 @@ def inject_tab_icon() -> None:
                 link.setAttribute("data-kg-icon", "true");
                 doc.head.appendChild(link);
               }}
-              link.rel = rel;
-              link.type = "image/svg+xml";
-              link.href = iconUrl;
+              if (link.rel !== rel) link.rel = rel;
+              if (link.type !== "image/svg+xml") link.type = "image/svg+xml";
+              if (link.href !== iconUrl) link.href = iconUrl;
             }}
 
             for (const link of doc.head.querySelectorAll("link[rel*='icon']:not([data-kg-icon='true'])")) {{
-              link.type = "image/svg+xml";
-              link.href = iconUrl;
+              if (link.type !== "image/svg+xml") link.type = "image/svg+xml";
+              if (link.href !== iconUrl) link.href = iconUrl;
             }}
           }};
 
           applyIcon();
-
-          if (window.__kgTabIconObserver) {{
-            window.__kgTabIconObserver.disconnect();
-          }}
-          if (window.__kgTabIconInterval) {{
-            clearInterval(window.__kgTabIconInterval);
-          }}
-
-          window.__kgTabIconObserver = new MutationObserver(() => applyIcon());
-          window.__kgTabIconObserver.observe(doc.head, {{
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["href", "rel", "type"]
-          }});
-
-          window.__kgTabIconInterval = window.setInterval(applyIcon, 1500);
+          let attempts = 0;
+          const retryTimer = window.setInterval(() => {{
+            applyIcon();
+            attempts += 1;
+            if (attempts >= 5) {{
+              window.clearInterval(retryTimer);
+            }}
+          }}, 800);
         }})();
         </script>
         """,

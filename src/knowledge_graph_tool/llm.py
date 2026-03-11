@@ -126,6 +126,51 @@ class OpenAIService:
         return cleaned
 
     @staticmethod
+    def _question_tokens(text: str) -> set[str]:
+        return {
+            token
+            for token in re.findall(r"[a-z0-9]+", text.lower())
+            if len(token) > 2
+        }
+
+    def _focused_excerpt(self, question: str, source_text: str, char_budget: int = 420) -> str:
+        question_tokens = self._question_tokens(question)
+        sentences = [
+            sentence.strip()
+            for sentence in re.split(r"(?<=[.!?])\s+", source_text)
+            if sentence.strip()
+        ]
+        if not sentences:
+            return source_text[:char_budget].strip()
+
+        ranked_sentences = []
+        for sentence in sentences:
+            tokens = self._question_tokens(sentence)
+            overlap = len(question_tokens.intersection(tokens))
+            ranked_sentences.append((overlap, min(len(sentence), 220), sentence))
+
+        ranked_sentences.sort(key=lambda item: (item[0], item[1]), reverse=True)
+
+        selected: List[str] = []
+        current_length = 0
+        for overlap, _, sentence in ranked_sentences:
+            if not selected and overlap == 0:
+                selected.append(sentences[0])
+                break
+            if overlap == 0:
+                continue
+            projected = current_length + len(sentence) + (1 if selected else 0)
+            if projected > char_budget and selected:
+                continue
+            selected.append(sentence)
+            current_length = projected
+            if len(selected) >= 2 or current_length >= char_budget:
+                break
+
+        excerpt = " ".join(selected) if selected else source_text[:char_budget]
+        return excerpt[:char_budget].strip()
+
+    @staticmethod
     def _truncate_for_embedding(text: str, max_chars: int = 6000) -> str:
         if len(text) <= max_chars:
             return text
@@ -135,9 +180,10 @@ class OpenAIService:
         if not self.client:
             raise RuntimeError("OPENAI_API_KEY is not configured.")
 
-        organizations = sorted({hit.document.organization for hit in hits})
+        synthesis_hits = hits[:4]
+        organizations = sorted({hit.document.organization for hit in synthesis_hits})
         context_blocks = []
-        for index, hit in enumerate(hits, start=1):
+        for index, hit in enumerate(synthesis_hits, start=1):
             context_blocks.append(
                 "\n".join(
                     [
@@ -145,8 +191,7 @@ class OpenAIService:
                         f"[{index}] Organization: {hit.document.organization}",
                         f"[{index}] Date: {hit.document.published_date or 'Unknown'}",
                         f"[{index}] Section: {(hit.parent_chunk.heading if hit.parent_chunk else hit.chunk.heading)}",
-                        f"[{index}] Source file: {hit.document.file_name}",
-                        f"[{index}] Excerpt: {hit.excerpt}",
+                        f"[{index}] Evidence: {self._focused_excerpt(question, hit.excerpt)}",
                     ]
                 )
             )
@@ -172,7 +217,7 @@ class OpenAIService:
                 f"Organizations present in the provided sources: {', '.join(organizations)}\n\n"
                 f"Sources:\n\n{chr(10).join(context_blocks)}"
             ),
-            max_output_tokens=900,
+            max_output_tokens=360,
         )
         answer = self._clean_synthesized_answer(answer)
         if not answer.strip():
