@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Optional
-from urllib.parse import quote
 
 import streamlit as st
 
@@ -19,53 +18,6 @@ from knowledge_graph_tool.search import answer_question
 
 
 st.set_page_config(page_title="Consulting Research Explorer", page_icon="📖", layout="wide")
-
-
-def inject_tab_icon() -> None:
-    svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='50' font-size='52'>📖</text></svg>"
-    icon_url = f"data:image/svg+xml,{quote(svg)}"
-    st.html(
-        f"""
-        <div style="display:none"></div>
-        <script>
-        (() => {{
-          const iconUrl = "{icon_url}";
-          const doc = window.document;
-
-          const applyIcon = () => {{
-            const iconRels = ["icon", "shortcut icon", "apple-touch-icon"];
-            for (const rel of iconRels) {{
-              let link = doc.head.querySelector(`link[rel="${{rel}}"][data-kg-icon="true"]`);
-              if (!link) {{
-                link = doc.createElement("link");
-                link.setAttribute("data-kg-icon", "true");
-                doc.head.appendChild(link);
-              }}
-              if (link.rel !== rel) link.rel = rel;
-              if (link.type !== "image/svg+xml") link.type = "image/svg+xml";
-              if (link.href !== iconUrl) link.href = iconUrl;
-            }}
-
-            for (const link of doc.head.querySelectorAll("link[rel*='icon']:not([data-kg-icon='true'])")) {{
-              if (link.type !== "image/svg+xml") link.type = "image/svg+xml";
-              if (link.href !== iconUrl) link.href = iconUrl;
-            }}
-          }};
-
-          applyIcon();
-          let attempts = 0;
-          const retryTimer = window.setInterval(() => {{
-            applyIcon();
-            attempts += 1;
-            if (attempts >= 5) {{
-              window.clearInterval(retryTimer);
-            }}
-          }}, 800);
-        }})();
-        </script>
-        """,
-        unsafe_allow_javascript=True,
-    )
 
 
 @st.cache_resource
@@ -159,7 +111,6 @@ def active_metrics(settings, documents: list[DocumentRecord]) -> dict:
 
 
 def main() -> None:
-    inject_tab_icon()
     settings = app_settings()
     manifest = load_restricted_manifest(settings.restricted_manifest_path)
     documents = active_documents(settings)
